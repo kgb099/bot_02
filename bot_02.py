@@ -5,6 +5,8 @@ import os
 from dotenv import load_dotenv
 from binance import Client
 from datetime import datetime
+from telegram import Bot
+import asyncio
 
 load_dotenv(override=True)
 
@@ -18,17 +20,40 @@ def apis_key_y_secert():
 def verificacion_la_expiracion():
     experacion_str = os.getenv("experacion")
     experacion = datetime.strptime(experacion_str, '%d-%m-%Y')
+
     print(experacion)
+
     now = datetime.now()
+
     print(now)
+
     if experacion <= now:
-        print("hay que cambiar las apis")
-        return False
+        texto = "hay que cambiar las apis"
+
     else:
-        print("toda via sirve")
-        return True
+        texto = "las apis estan correctas"
+
+    return texto
 
 print(verificacion_la_expiracion())
+
+
+# Token que te dio BotFather
+TOKEN = os.getenv("BOT_TOKEN")
+# ID del chat al que quieres enviar mensajes
+CHAT_ID = os.getenv("CHAT_ID")
+#texto que va dentro de el msj
+
+
+async def enviar_mensaje(texto):
+    bot = Bot(token=TOKEN)
+    await bot.send_message(chat_id=CHAT_ID, text=texto)
+
+if __name__ == "__main__":
+    # Usar asyncio.run() para ejecutar la función asíncrona
+    asyncio.run(enviar_mensaje(verificacion_la_expiracion()))
+
+
 
 def get_client():
     client = Client(apis_key_y_secert()[0],apis_key_y_secert()[1])  
@@ -46,28 +71,6 @@ activos = clientes()
 for activo in activos:
     print(f"Activo: {activo['asset']}, Saldo Disponible: {activo['free']}")
 
-# def verificacion():
-#      viejo = os.getenv("experacion")
-#      viejo_datetime = datetime.strptime(viejo, "%d-%m-%Y")
-     
-#      print(viejo)
-#      now = datetime.now()
-#      if viejo_datetime >= now:# este if verifica la fecha
-#          if Client(apis_key_y_secert()[0],apis_key_y_secert()[1]).get_account()['balances']:#este if verifica el cliente
-#             return True
-#          else:
-#             return False
-
-#      else:
-#          return False
-
-# if verificacion() == True:
-#     print("Verdadero")
-# else:
-#     nueva_fecha_de_expiracion()
-    
-
-"""
 def verificacion_de_apis():
     try:
         if():
@@ -75,10 +78,8 @@ def verificacion_de_apis():
         raise
     except:
         print("tiempo caducado de las apis cambiarlas")
-    except:
-        print("problemas en las verificacion de las apis")
     
-
+"""
 PAR = "BTC"
 ESTABLE = "USDT"
 symbol = PAR+ESTABLE
