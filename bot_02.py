@@ -2,30 +2,53 @@ import asyncio
 import websockets
 import json
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 from binance import Client
-from datetime import datetime
+from datetime import datetime,timedelta
 from telegram import Bot
 import asyncio
 
-load_dotenv(override=True)
 
-#permite usar las apis
+dotenv_path = '.env'
+load_dotenv(dotenv_path, override=True)
+
+#permite usar las apis lo de vuelve como tupla
 def apis_key_y_secert():
     api_key = os.getenv("API_KEY")
     api_secret = os.getenv("API_SECRET")
     return(api_key,api_secret)
+
+def modificar_apis_now():
+    apis_key_viejas = apis_key_y_secert()[0]
+    apis_secret_viejas = apis_key_y_secert()[1]
+    fecha_de_expiracion = datetime.now() + timedelta(days=28)
+    fecha_experacion = fecha_de_expiracion.strftime("%d-%m-%Y")
+
+    while True:
+        apis_key_now = input("cargar api key nueva: \n")
+        apis_secret_now =input("cargar api secret nueva: \n")
+        
+        if apis_key_now != apis_key_viejas and apis_secret_now != apis_secret_viejas:
+           set_key(dotenv_path, "API_KEY", apis_key_now) 
+           set_key(dotenv_path, "API_SECRET", apis_secret_now)
+           set_key(dotenv_path, "creacion", datetime.now().strftime("%d-%m-%Y"))
+           set_key(dotenv_path, "experacion",fecha_experacion)
+           print("Ambas claves han sido actualizadas con éxito.")
+           break
+        
+        else:
+          print("Ambas claves deben ser diferentes de las actuales. Por favor, ingrese nuevas claves.")
 
 #revisa la expiracion de la clave
 def verificacion_la_expiracion():
     experacion_str = os.getenv("experacion")
     experacion = datetime.strptime(experacion_str, '%d-%m-%Y')
 
-    print(experacion)
+    #print(experacion)
 
     now = datetime.now()
 
-    print(now)
+    #print(now)
 
     if experacion <= now:
         texto = "hay que cambiar las apis"
@@ -48,11 +71,7 @@ CHAT_ID = os.getenv("CHAT_ID")
 async def enviar_mensaje(texto):
     bot = Bot(token=TOKEN)
     await bot.send_message(chat_id=CHAT_ID, text=texto)
-
-if __name__ == "__main__":
-    # Usar asyncio.run() para ejecutar la función asíncrona
-    asyncio.run(enviar_mensaje(verificacion_la_expiracion()))
-
+    modificar_apis_now()
 
 
 def get_client():
@@ -78,7 +97,8 @@ def verificacion_de_apis():
         raise
     except:
         print("tiempo caducado de las apis cambiarlas")
-    
+
+wallet = get_client().get_account()['balances']
 """
 PAR = "BTC"
 ESTABLE = "USDT"
@@ -94,6 +114,7 @@ async def subscribe_to_price(symbol):
 
                 message = await websocket.recv()
                 data = json.loads(message)
+                precio = data['c']
                 
                 print(f"Precio actual de {symbol}: {data['c']}")
             except Exception as e:
@@ -102,3 +123,8 @@ async def subscribe_to_price(symbol):
 
 # Ejemplo de suscripción al precio de BTCUSDT
 asyncio.run(subscribe_to_price(symbol=symbol))"""
+
+if __name__ == "__main__":
+    # Usar asyncio.run() para ejecutar la función asíncrona
+    asyncio.run(enviar_mensaje(verificacion_la_expiracion()))
+    modificar_apis_now()
