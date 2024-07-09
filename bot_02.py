@@ -6,17 +6,25 @@ from dotenv import load_dotenv, set_key
 from binance import Client
 from datetime import datetime,timedelta
 from telegram import Bot
-import asyncio
-
+from telegram.error import RetryAfter
 
 dotenv_path = '.env'
 load_dotenv(dotenv_path, override=True)
+#token de telegram
+TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+
+PAR = "BTC"
+ESTABLE = "USDT"
+symbol = PAR+ESTABLE
+
 
 #permite usar las apis lo de vuelve como tupla
 def apis_key_y_secert():
     api_key = os.getenv("API_KEY")
     api_secret = os.getenv("API_SECRET")
     return(api_key,api_secret)
+
 
 def modificar_apis_now():
     apis_key_viejas = apis_key_y_secert()[0]
@@ -39,71 +47,60 @@ def modificar_apis_now():
         else:
           print("Ambas claves deben ser diferentes de las actuales. Por favor, ingrese nuevas claves.")
 
+
 #revisa la expiracion de la clave
 def verificacion_la_expiracion():
     experacion_str = os.getenv("experacion")
-    experacion = datetime.strptime(experacion_str, '%d-%m-%Y')
-
-    #print(experacion)
-
-    now = datetime.now()
-
-    #print(now)
-
-    if experacion <= now:
-        texto = "hay que cambiar las apis"
-
+    if not experacion_str:
+        return "No se encontró la variable de entorno 'experacion'", False
+    
     else:
-        texto = "las apis estan correctas"
+        experacion = datetime.strptime(experacion_str, '%d-%m-%Y')
+        now = datetime.now()
 
-    return texto
+        if experacion <= now:
+            texto = "hay que cambiar las apis"
+            resultado = False
 
-print(verificacion_la_expiracion())
+        else:
+            texto = "las apis estan correctas"
+            resultado = True
 
-
-# Token que te dio BotFather
-TOKEN = os.getenv("BOT_TOKEN")
-# ID del chat al que quieres enviar mensajes
-CHAT_ID = os.getenv("CHAT_ID")
-#texto que va dentro de el msj
+        return texto, resultado
 
 
 async def enviar_mensaje(texto):
-    bot = Bot(token=TOKEN)
-    await bot.send_message(chat_id=CHAT_ID, text=texto)
-    modificar_apis_now()
+    texto,resultado = verificacion_la_expiracion()
+    if resultado == True:
+        bot = Bot(token=TOKEN)
+        try:
+            await bot.send_message(chat_id=CHAT_ID, text=texto)
+        except RetryAfter as e:
+            print(f"Excedido el control de inundación. Reintentar en {e.retry_after} segundos.")
+            await asyncio.sleep(e.retry_after)
+            await bot.send_message(chat_id=CHAT_ID, text=texto)
+        finally:
+            await bot.close()
 
 
 def get_client():
     client = Client(apis_key_y_secert()[0],apis_key_y_secert()[1])  
     return client
 
-print(get_client())
 
+#entrega todos el saldo de la cuenta o el saldo de un tiker espesifico
 def clientes():
     client = get_client().get_account()
     clients = client['balances']
-    balance2 = [client for client in clients if float(client['free']) > 0]
-    return balance2
+    balance1 = [client for client in clients if float(client['free']) > 0]
+    activos = balance1
+    for activo in activos:
+        if activo['asset'] == ESTABLE:
+            balance2 = f"Activo: {activo['asset']}, Saldo Disponible: {activo['free']}"
+    balance3=balance1
+    balance4=balance2
+    return balance3, balance4
 
-activos = clientes()
-for activo in activos:
-    print(f"Activo: {activo['asset']}, Saldo Disponible: {activo['free']}")
-
-def verificacion_de_apis():
-    try:
-        if():
-            print("apis verificadas corectamente")
-        raise
-    except:
-        print("tiempo caducado de las apis cambiarlas")
-
-wallet = get_client().get_account()['balances']
-"""
-PAR = "BTC"
-ESTABLE = "USDT"
-symbol = PAR+ESTABLE
-print(symbol)
 
 async def subscribe_to_price(symbol):
     uri = f"wss://stream.binance.com:9443/ws/{symbol.lower()}@ticker"
@@ -120,11 +117,14 @@ async def subscribe_to_price(symbol):
             except Exception as e:
                 print(e)
 
-
-# Ejemplo de suscripción al precio de BTCUSDT
-asyncio.run(subscribe_to_price(symbol=symbol))"""
-
 if __name__ == "__main__":
     # Usar asyncio.run() para ejecutar la función asíncrona
-    asyncio.run(enviar_mensaje(verificacion_la_expiracion()))
-    modificar_apis_now()
+    #asyncio.run(enviar_mensaje(verificacion_la_expiracion()[0]))
+    mensaje, resultado = verificacion_la_expiracion()
+    if not resultado:
+        modificar_apis_now()
+    else:
+        mensaje
+    print(clientes()[1])
+    asyncio.run(subscribe_to_price(symbol=symbol))
+    
