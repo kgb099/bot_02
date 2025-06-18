@@ -5,10 +5,11 @@ import os
 from datetime import datetime
 
 # Constantes
-TICKERS = ["btcusdt", "ethusdt", "zilusdt"]  # Ejemplo de tickers
+TICKERS = ["btcusdt", "ethusdt", "runeusdt"]  # Ejemplo de tickers
 WS_URI = "wss://stream.binance.com:9443/ws"  # URI para la conexión WebSocket con Binance
 RECONNECT_DELAY = 10  # Tiempo de espera entre intentos de reconexión en segundos
 MAX_RECONNECT_MINUTES = 5  # Máximo tiempo continuo de intentos de reconexión antes de una pausa
+BASE_DIR = "F:\\Prices"  # Directorio base para almacenar los precios
 
 def get_directory_path(ticker):
     """Genera la ruta del directorio para almacenar los precios del ticker."""
@@ -16,7 +17,8 @@ def get_directory_path(ticker):
     year_dir = f"{now.year}"
     month_dir = f"{now.month:02}-{now.year}"
     day_dir = f"{now.day:02}-{now.month:02}"
-    base_path = os.path.join("Prices", f"{ticker.upper()}_precio")
+    base_path = os.path.join(BASE_DIR, f"{ticker.upper()}_precio")
+    #base_path = os.path.join("Prices", f"{ticker.upper()}_precio")
     return os.path.join(base_path, year_dir, month_dir, day_dir)
 
 def ensure_directory_exists(path):
@@ -90,10 +92,13 @@ async def ticker_handler(ticker):
                     message = await websocket.recv()
                     data = json.loads(message)
                     price = data.get('p')
-                    if price is not None:
+                    if data.get('e') == 'trade' and 'p' in data:
+                    #if price is not None:
                         save_price_to_file(ticker, price)
                     else:
-                        print(f"No se encontraron datos de precio en el mensaje para {ticker}.")
+                        if 'result' not in data:  # Ignora mensajes de confirmación de suscripción
+                            print(f"Mensaje no esperado para {ticker}: {data}")
+                            print(f"No se encontraron datos de precio en el mensaje para {ticker}.")
         except (websockets.exceptions.ConnectionClosedError, websockets.exceptions.ConnectionClosedOK) as e:
             print(f"La conexión se cerró con error: {e}")
             current_time = datetime.now()

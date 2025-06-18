@@ -1,0 +1,2 @@
+from .telegram_bot02 import enviar_varios_mensajes
+from .telegram_bot02 import enviar_mensaje
